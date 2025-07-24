@@ -9,7 +9,6 @@ from starlette.responses import JSONResponse
 MODEL_URL = "https://drive.google.com/uc?id=1pyNscQnv5GPQibIJHvAgiPn-BXSh_cO4"
 MODEL_PATH = "export.pkl"
 
-# Download the model file if it doesn't exist
 def download_model():
     if not os.path.exists(MODEL_PATH):
         print("Downloading model from Google Drive...")
@@ -20,24 +19,15 @@ def download_model():
             print(f"Failed to download model: {e}")
             raise
 
+# Download and load model at startup
 download_model()
-
-# Load the model (do this ONCE at startup)
-try:
-    learner = load_learner(MODEL_PATH)
-except Exception as e:
-    print(f"Model failed to load: {e}")
-    learner = None
+learner = load_learner(MODEL_PATH)
 
 app = FastAPI()
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    if learner is None:
-        return JSONResponse(status_code=500, content={"error": "Model not loaded"})
-
     try:
-        # Save uploaded image temporarily
         with NamedTemporaryFile(delete=False) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
@@ -52,6 +42,11 @@ async def predict(file: UploadFile = File(...)):
             "description": f"Predicted {pred} with confidence {probs[idx]:.2f}"
         }
     except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.get("/")
+def home():
+    return {"message": "Plant Disease Detection API is running!"}
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/")
