@@ -22,23 +22,29 @@ def download_model():
 
 download_model()
 
-# Load the model
-learner = load_learner(MODEL_PATH)
+# Load the model (do this ONCE at startup)
+try:
+    learner = load_learner(MODEL_PATH)
+except Exception as e:
+    print(f"Model failed to load: {e}")
+    learner = None
 
 app = FastAPI()
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    if learner is None:
+        return JSONResponse(status_code=500, content={"error": "Model not loaded"})
+
     try:
-        # Save the uploaded file temporarily
+        # Save uploaded image temporarily
         with NamedTemporaryFile(delete=False) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
 
-        # Open the image and predict
         img = PILImage.create(tmp_path)
         pred, idx, probs = learner.predict(img)
-        os.remove(tmp_path)  # Clean up temp file
+        os.remove(tmp_path)
 
         return {
             "disease": str(pred),
