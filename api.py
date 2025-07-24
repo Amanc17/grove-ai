@@ -1,46 +1,56 @@
 import os
 import requests
+from fastapi import FastAPI, UploadFile, File
 from fastai.learner import load_learner
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-from PIL import Image
-import io
+from fastai.vision.all import PILImage
+import uvicorn
 
+# ---------------------------
+# 1. Download model if needed
 EXPORT_PATH = "export.pkl"
-DRIVE_FILE_ID = "1pyNscQnv5GPQibIJHvAgiPn-BXSh_cO4"
-DRIVE_URL = f"https://drive.google.com/uc?export=download&id={DRIVE_FILE_ID}"
+DRIVE_URL = "https://drive.google.com/uc?export=download&id=1pyNscQnv5GPQibIJHvAgiPn-BXSh_cO4"
 
-def download_if_not_exists(filename, url):
-    if not os.path.exists(filename):
-        print(f"Downloading {filename} from {url}...")
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        print(f"Downloaded {filename}.")
+def download_model():
+    if not os.path.exists(EXPORT_PATH):
+        print("Downloading model from Google Drive...")
+        r = requests.get(DRIVE_URL)
+        with open(EXPORT_PATH, "wb") as f:
+            f.write(r.content)
+        print("Model downloaded.")
 
-download_if_not_exists(EXPORT_PATH, DRIVE_URL)
+download_model()
 
-# Load model (cache so it only loads once)
-learner = load_learner(EXPORT_PATH)
+# ---------------------------
+# 2. Load model
+try:
+    learner = load_learner(EXPORT_PATH)
+except Exception as e:
+    print("Error loading model:", e)
+    learner = None
 
-# --- FastAPI setup ---
+# ---------------------------
+# 3. FastAPI app
 app = FastAPI()
 
-@app.post("/predict/")
+@app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    if learner is None:
+        return {"error": "Model not loaded"}
     try:
-        img_bytes = await file.read()
-        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-        pred, pred_idx, probs = learner.predict(img)
-        return JSONResponse({
-            "prediction": str(pred),
-            "confidence": float(probs[pred_idx])
-        })
+        img = PILImage.create(await file.read())
+        pred, idx, probs = learner.predict(img)
+        return {
+            "disease": str(pred),
+            "confidence": float(probs[idx]),
+            "description": f"Predicted class: {pred} with {probs[idx]:.2%} confidence."
+        }
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return {"error": str(e)}
 
 @app.get("/")
 def root():
-    return {"message": "Plant Disease AI API is running."}
+    return {"status": "ok"}
+
+# Optional: For local dev only
+if __name__ == "__main__":
+    uvicorn.run("api:app", host="0.0.0.0", port=8000)
