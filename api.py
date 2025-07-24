@@ -1,56 +1,53 @@
 import os
-import requests
-from fastapi import FastAPI, UploadFile, File
+import gdown
+from fastapi import FastAPI, File, UploadFile
 from fastai.learner import load_learner
-from fastai.vision.all import PILImage
-import uvicorn
+from fastai.vision.core import PILImage
+from tempfile import NamedTemporaryFile
+from starlette.responses import JSONResponse
 
-# ---------------------------
-# 1. Download model if needed
-EXPORT_PATH = "export.pkl"
-DRIVE_URL = "https://drive.google.com/uc?export=download&id=1pyNscQnv5GPQibIJHvAgiPn-BXSh_cO4"
+MODEL_URL = "https://drive.google.com/uc?id=1pyNscQnv5GPQibIJHvAgiPn-BXSh_cO4"
+MODEL_PATH = "export.pkl"
 
+# Download the model file if it doesn't exist
 def download_model():
-    if not os.path.exists(EXPORT_PATH):
+    if not os.path.exists(MODEL_PATH):
         print("Downloading model from Google Drive...")
-        r = requests.get(DRIVE_URL)
-        with open(EXPORT_PATH, "wb") as f:
-            f.write(r.content)
-        print("Model downloaded.")
+        try:
+            gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+            print("Download complete.")
+        except Exception as e:
+            print(f"Failed to download model: {e}")
+            raise
 
 download_model()
 
-# ---------------------------
-# 2. Load model
-try:
-    learner = load_learner(EXPORT_PATH)
-except Exception as e:
-    print("Error loading model:", e)
-    learner = None
+# Load the model
+learner = load_learner(MODEL_PATH)
 
-# ---------------------------
-# 3. FastAPI app
 app = FastAPI()
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    if learner is None:
-        return {"error": "Model not loaded"}
     try:
-        img = PILImage.create(await file.read())
+        # Save the uploaded file temporarily
+        with NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        # Open the image and predict
+        img = PILImage.create(tmp_path)
         pred, idx, probs = learner.predict(img)
+        os.remove(tmp_path)  # Clean up temp file
+
         return {
             "disease": str(pred),
             "confidence": float(probs[idx]),
-            "description": f"Predicted class: {pred} with {probs[idx]:.2%} confidence."
+            "description": f"Predicted {pred} with confidence {probs[idx]:.2f}"
         }
     except Exception as e:
-        return {"error": str(e)}
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/")
-def root():
-    return {"status": "ok"}
-
-# Optional: For local dev only
-if __name__ == "__main__":
-    uvicorn.run("api:app", host="0.0.0.0", port=8000)
+def home():
+    return {"message": "Plant Disease Detection API is running!"}
