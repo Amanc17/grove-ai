@@ -1,7 +1,7 @@
 fastapi==0.110.2
 uvicorn==0.29.0
 fastai==2.7.14
-torch==2.1.0
+torch==2.0.1
 gdown==5.1.0
 pillow
 python-multipart
