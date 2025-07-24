@@ -1,6 +1,9 @@
-fastapi
+fastai==2.7.14
+torch==2.2.1+cpu
+torchvision==0.17.1+cpu
+torchaudio==2.2.1+cpu
 uvicorn
-torch
-fastai
-gdown
+fastapi
 pillow
+gdown
+--extra-index-url https://download.pytorch.org/whl/cpu
