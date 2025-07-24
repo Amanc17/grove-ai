@@ -20,6 +20,10 @@ download_model()
 learner = load_learner(MODEL_PATH)
 app = FastAPI()
 
+@app.get("/")
+def home():
+    return {"message": "Plant Disease Detection API is running!"}
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     try:
@@ -36,11 +40,3 @@ async def predict(file: UploadFile = File(...)):
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.get("/")
-def home():
-    return {"message": "Plant Disease Detection API is running!"}
-
-@app.get("/")
-def home():
-    return {"message": "Plant Disease Detection API is running!"}
