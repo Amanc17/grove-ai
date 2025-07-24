@@ -1,5 +1,6 @@
 fastai
-fastapi
+torch
 uvicorn
-pillow
+fastapi
 requests
+pillow
