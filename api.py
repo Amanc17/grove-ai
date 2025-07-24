@@ -12,17 +12,12 @@ MODEL_PATH = "export.pkl"
 def download_model():
     if not os.path.exists(MODEL_PATH):
         print("Downloading model from Google Drive...")
-        try:
-            gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-            print("Download complete.")
-        except Exception as e:
-            print(f"Failed to download model: {e}")
-            raise
+        gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+        print("Download complete.")
 
-# Download and load model at startup
 download_model()
-learner = load_learner(MODEL_PATH)
 
+learner = load_learner(MODEL_PATH)
 app = FastAPI()
 
 @app.post("/predict")
@@ -31,11 +26,9 @@ async def predict(file: UploadFile = File(...)):
         with NamedTemporaryFile(delete=False) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
-
         img = PILImage.create(tmp_path)
         pred, idx, probs = learner.predict(img)
         os.remove(tmp_path)
-
         return {
             "disease": str(pred),
             "confidence": float(probs[idx]),
@@ -47,7 +40,6 @@ async def predict(file: UploadFile = File(...)):
 @app.get("/")
 def home():
     return {"message": "Plant Disease Detection API is running!"}
-        return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/")
 def home():
