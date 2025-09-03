@@ -1,5 +1,7 @@
 fastapi
-uvicorn
-fastai
+uvicorn[standard]
+fastai==2.7.14
+torch==2.2.2
 gdown
+pillow
 python-multipart
