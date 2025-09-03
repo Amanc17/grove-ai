@@ -1,7 +1,11 @@
-fastapi
-uvicorn[standard]
+fastapi==0.116.1
+uvicorn==0.30.6
 fastai==2.7.14
+gdown==5.2.0
+python-multipart==0.0.9
+pillow==10.4.0
+
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.2.2
-gdown
-pillow
-python-multipart
+torchvision==0.17.2
+torchaudio==2.2.2
